@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organization Explorer</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Modern Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="container">
+            <div id="top-section">
+                <div id="search-container">
+                    <input type="text" id="search-input" placeholder="Search employees..." class="search-input">
+                    <div id="search-dropdown" class="search-dropdown"></div>
+                </div>
+                <div id="breadcrumb" class="breadcrumb"></div>
+            </div>
+            <div class="main-content">
+                <div id="org-chart" class="org-chart"></div>
+                <div class="side-panel">
+                    <div id="info-panel" class="info-panel">
+                        <!-- Info panel content will be inserted here -->
+                    </div>
+                    <div class="team-members-container">
+                        <h3>Team Members</h3>
+                        <div class="team-members-list">
+                            <!-- Team members will be inserted here -->
+                        </div>
+                    </div>
+                    <div id="stats-container">
+                        <div id="employee-stats" class="stats-row">
+                            <!-- Employee specific stats will be inserted here -->
+                        </div>
+                        <div class="company-stats-divider">
+                            <span>Company Total</span>
+                        </div>
+                        <div id="company-stats" class="stats-row">
+                            <div class="stat-item">
+                                <div class="stat-value" id="total-employees">0</div>
+                                <div class="stat-label">Employees</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="total-teams">0</div>
+                                <div class="stat-label">Teams</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="total-locations">0</div>
+                                <div class="stat-label">Locations</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

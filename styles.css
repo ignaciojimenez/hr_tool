@@ -1,0 +1,546 @@
+:root {
+    --primary-color: #3b82f6;
+    --secondary-color: #60a5fa;
+    --surface-color: #ffffff;
+    --background-color: #f8fafc;
+    --text-color: #1e293b;
+    --border-color: #e2e8f0;
+    --hover-color: #f1f5f9;
+    --text-secondary-color: #64748b;
+    --font-size-large: 24px;
+    --font-size-medium: 16px;
+    --font-size-normal: 14px;
+    --font-size-small: 12px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.top-bar {
+    position: relative;
+    padding: 1rem;
+    background-color: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+#top-section {
+    width: 100%;
+    background: var(--surface-color);
+}
+
+#search-container {
+    width: 100%;
+    padding: 20px 20px 0 20px;
+    background: var(--surface-color);
+}
+
+#search-input {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 13px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--background-color);
+    color: var(--text-color);
+}
+
+.search-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.search-dropdown.active {
+    display: block;
+}
+
+.search-result {
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.search-result:hover {
+    background-color: var(--hover-color);
+}
+
+.search-result-name {
+    font-size: var(--font-size-normal);
+    color: var(--text-color);
+}
+
+.search-result-details {
+    font-size: var(--font-size-small);
+    color: var(--text-secondary-color);
+    margin-top: 2px;
+}
+
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+}
+
+.search-result-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.search-result-item:hover {
+    background-color: var(--hover-color);
+}
+
+.breadcrumb {
+    width: 100%;
+    padding: 8px 20px;
+    font-size: 13px;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.breadcrumb-item {
+    color: var(--primary-color);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.breadcrumb-item:hover {
+    background-color: var(--hover-color);
+    color: var(--primary-color);
+}
+
+.breadcrumb-item:not(:last-child)::after {
+    content: ">";
+    color: #999;
+    font-size: 11px;
+    position: absolute;
+    right: -12px;
+}
+
+.main-content {
+    display: flex;
+    width: 100%;
+}
+
+.content {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+#org-chart {
+    flex: 1;
+    overflow: auto;
+    padding: 20px;
+}
+
+.side-panel {
+    width: 300px;
+    border-left: 1px solid var(--border-color);
+    background: var(--surface-color);
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    max-height: calc(100vh - 100px);
+}
+
+.side-panel h2 {
+    font-size: 1.25rem;
+    margin: 0 0 8px 0;
+}
+
+.info-panel {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.employee-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-color);
+    margin: 0;
+}
+
+.employee-title {
+    font-size: 11px;
+    color: var(--text-secondary-color);
+    margin: 2px 0 0 0;
+}
+
+.info-section {
+    margin-bottom: 12px;
+}
+
+.info-section:last-child {
+    margin-bottom: 0;
+}
+
+.info-label {
+    font-size: 10px;
+    color: var(--text-secondary-color);
+    margin-bottom: 1px;
+}
+
+.info-value {
+    font-size: 11px;
+    color: var(--text-color);
+}
+
+.team-link, .team-member {
+    font-size: 0.875rem;
+    color: var(--primary-color);
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: block;
+}
+
+.team-link:hover, .team-member:hover {
+    background-color: var(--hover-color);
+    color: var(--primary-color);
+}
+
+.team-members-container {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-color);
+    overflow-y: auto;
+}
+
+.team-members-container h3 {
+    font-size: 0.875rem;
+    margin: 0px 0 0px 0;
+    color: var(--text-color);
+}
+
+.team-members-list {
+    overflow-y: auto;
+    max-height: calc(100% - 30px);
+    padding-right: 10px;
+}
+
+.team-members-list .team-member {
+    font-size: var(--font-size-normal);
+    color: var(--primary-color);
+    cursor: pointer;
+    padding: 4px 0px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.team-members-list .team-member:hover {
+    background-color: var(--hover-color);
+    color: var(--primary-color);
+}
+
+.direct-reports-list {
+    list-style: none;
+    padding: 0;
+}
+
+.direct-reports-list .clickable {
+    font-size: var(--font-size-normal);
+    color: var(--primary-color);
+    cursor: pointer;
+    padding: 4px 0px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: block;
+}
+
+.direct-reports-list .clickable:hover {
+    background-color: var(--hover-color);
+    color: var(--primary-color);
+}
+
+.up-button {
+    padding: 6px 10px;
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-secondary-color);
+    cursor: pointer;
+    font-size: 13px;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 28px;
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.up-button:hover {
+    background-color: var(--hover-color);
+    color: var(--text-color);
+    border-color: var(--border-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.quick-stats {
+    display: flex;
+    border-top: 1px solid var(--border-color);
+    padding: 0.75rem;
+}
+
+#stats-container {
+    padding: 8px;
+    border-top: 1px solid var(--border-color);
+    background: transparent;
+}
+
+.stats-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.stats-row:last-child {
+    margin-bottom: 0;
+}
+
+.stat-item {
+    text-align: center;
+    flex: 1;
+}
+
+.stat-value {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-color);
+    margin-bottom: 1px;
+    line-height: 1.2;
+}
+
+.stat-label {
+    font-size: 10px;
+    color: var(--text-secondary-color);
+    line-height: 1.2;
+}
+
+.company-stats-divider {
+    margin: 6px 0;
+    text-align: center;
+    position: relative;
+    border-top: 1px solid var(--border-color);
+}
+
+.company-stats-divider span {
+    position: relative;
+    top: -0.7em;
+    padding: 0 6px;
+    color: var(--text-secondary-color);
+    font-size: 10px;
+    background: var(--surface-color);
+}
+
+#company-stats {
+    opacity: 0.7;
+}
+
+#employee-stats {
+    padding: 10px 0;
+    background: transparent;
+}
+
+#employee-stats .stat-value {
+    font-size: var(--font-size-medium);
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 4px;
+}
+
+#employee-stats .stat-label {
+    font-size: var(--font-size-small);
+    color: var(--text-color);
+}
+
+.clickable-report {
+    padding: 0.5rem;
+    margin: 0.25rem -0.5rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.clickable-report:hover {
+    background-color: var(--hover-color);
+    color: var(--primary-color);
+}
+
+.clickable {
+    color: var(--primary-color);
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.2s;
+}
+
+.clickable:hover {
+    color: var(--secondary-color);
+}
+
+/* D3.js specific styles */
+.node-bg {
+    fill: white;
+    stroke: var(--border-color);
+    stroke-width: 1px;
+}
+
+.node.highlight .node-bg {
+    stroke: var(--primary-color);
+    stroke-width: 2px;
+}
+
+.node .name-label {
+    font-size: 14px;
+    font-weight: 500;
+    fill: var(--text-color);
+}
+
+.node .title-label {
+    font-size: 12px;
+    fill: var(--text-secondary-color);
+}
+
+.link {
+    fill: none;
+    stroke: var(--border-color);
+    stroke-width: 1px;
+}
+
+/* Go Up button styles */
+.go-up-button {
+    opacity: 0.9;
+    transition: opacity 0.2s;
+}
+
+.go-up-button:hover {
+    opacity: 1;
+}
+
+.go-up-bg {
+    fill: white;
+    stroke: var(--border-color);
+    stroke-width: 1px;
+}
+
+.go-up-arrow {
+    fill: none;
+    stroke: var(--text-color);
+    stroke-width: 2px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.go-up-text {
+    font-size: 12px;
+    font-weight: 500;
+    fill: var(--text-color);
+    dominant-baseline: middle;
+}
+
+/* Employee info styles */
+.info-panel h3 {
+    font-size: 0.875rem;
+}
+
+.info-panel p {
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Go Up button styles */
+.go-up-button {
+    opacity: 0.9;
+    transition: opacity 0.2s;
+}
+
+.go-up-button:hover {
+    opacity: 1;
+}
+
+.go-up-bg {
+    fill: white;
+    stroke: var(--border-color);
+    stroke-width: 1px;
+}
+
+.go-up-arrow {
+    fill: none;
+    stroke: var(--text-color);
+    stroke-width: 2px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.go-up-text {
+    font-size: 12px;
+    font-weight: 500;
+    fill: var(--text-color);
+    dominant-baseline: middle;
+}
