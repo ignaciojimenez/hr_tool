@@ -1,36 +1,54 @@
+// Import database functions
+import { initDatabase, populateDatabase, searchEmployeesDb } from './db.js';
+
 // Global variables
 let ceoData = null;
 let selectedEmployee = null;
 let allEmployees = [];
 
 // Initialize the application
-document.addEventListener('DOMContentLoaded', initializeApp);
-
-function initializeApp() {
-    setupSearch();
-    loadData();
+async function initializeApp() {
+    try {
+        await initDatabase();
+        setupSearch();
+        await loadData();
+    } catch (error) {
+        console.error('Error initializing app:', error);
+    }
 }
 
-function loadData() {
-    fetch('organization_structure.json')
-        .then(response => response.json())
-        .then(data => {
-            ceoData = data.company.CEO;
-            initializeSearch();
-            updateCompanyStats(ceoData);
-            renderOrgChart(ceoData);
-            selectEmployee(ceoData);
-        });
+async function loadData() {
+    try {
+        console.log('Loading data...');
+        const response = await fetch('organization_structure.json');
+        const data = await response.json();
+        console.log('Loaded JSON data:', data);
+        
+        ceoData = data.company.CEO;
+        console.log('CEO data:', ceoData);
+        
+        const dbPopulated = populateDatabase(ceoData);
+        if (!dbPopulated) {
+            console.error('Failed to populate database');
+            return;
+        }
+        
+        updateCompanyStats(ceoData);
+        renderOrgChart(ceoData);
+        selectEmployee(ceoData);
+    } catch (error) {
+        console.error('Error loading data:', error);
+    }
 }
 
 function setupSearch() {
-    const searchInput = document.querySelector('.search-input');
-    const searchDropdown = document.querySelector('.search-dropdown');
+    const searchInput = document.querySelector('#search-input');
+    const searchDropdown = document.querySelector('#search-dropdown');
     let debounceTimer;
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.search-container')) {
+        if (!e.target.closest('#search-container')) {
             searchDropdown.classList.remove('active');
         }
     });
@@ -38,11 +56,10 @@ function setupSearch() {
     searchInput.addEventListener('input', () => {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
-            const query = searchInput.value.trim().toLowerCase();
-            if (query.length >= 3) {
+            const query = searchInput.value.trim();
+            if (query.length >= 2) {
                 const results = searchEmployees(query);
                 displaySearchResults(results);
-                searchDropdown.classList.add('active');
             } else {
                 searchDropdown.classList.remove('active');
             }
@@ -51,14 +68,11 @@ function setupSearch() {
 }
 
 function searchEmployees(query) {
-    return allEmployees.filter(employee => {
-        const searchText = `${employee.name} ${employee.team} ${employee.country}`.toLowerCase();
-        return searchText.includes(query);
-    }).slice(0, 5);
+    return searchEmployeesDb(query);
 }
 
 function displaySearchResults(results) {
-    const searchDropdown = document.querySelector('.search-dropdown');
+    const searchDropdown = document.querySelector('#search-dropdown');
     searchDropdown.innerHTML = '';
 
     if (results.length === 0) {
@@ -74,15 +88,19 @@ function displaySearchResults(results) {
         resultElement.className = 'search-result';
         resultElement.innerHTML = `
             <div class="search-result-name">${employee.name}</div>
-            <div class="search-result-details">${employee.team} · ${employee.country}</div>
+            <div class="search-result-details">
+                ${employee.team} · ${employee.title} · ${employee.country}
+            </div>
         `;
         resultElement.addEventListener('click', () => {
-            selectEmployee(employee);
+            findAndSelectEmployee(employee.name);
             searchDropdown.classList.remove('active');
-            document.querySelector('.search-input').value = '';
+            document.querySelector('#search-input').value = '';
         });
         searchDropdown.appendChild(resultElement);
     });
+    
+    searchDropdown.classList.add('active');
 }
 
 function initializeSearch() {
@@ -151,21 +169,28 @@ function renderOrgChart(data) {
 
     const root = d3.hierarchy(hierarchyData);
     
-    // Calculate vertical layout
+    // Calculate layout dimensions
     const nodeWidth = 200;
     const nodeHeight = 60;
     const levelHeight = 100;
+    const padding = 40;
     
-    // Position nodes with centering
+    // Calculate total width needed for the tree
+    const totalNodes = root.children ? root.children.length : 0;
+    const totalWidth = Math.max(nodeWidth, totalNodes * nodeWidth);
+    
+    // Position root node
     const centerX = width / 2;
-    const centerY = height / 3; // Position root node at 1/3 from the top
+    const centerY = height * 0.5; // Position root node at 50% from the top
+    
     root.x = centerX;
     root.y = centerY;
     
+    // Position child nodes
     if (root.children) {
-        const totalWidth = (root.children.length - 1) * nodeWidth;
+        const startX = centerX - (totalWidth / 2) + (nodeWidth / 2);
         root.children.forEach((child, i) => {
-            child.x = centerX + (i * nodeWidth - totalWidth / 2);
+            child.x = startX + (i * nodeWidth);
             child.y = centerY + levelHeight;
         });
     }
@@ -226,7 +251,45 @@ function renderOrgChart(data) {
         .attr('dy', '15')
         .attr('class', 'title-label')
         .text(d => d.data.team || d.data.title || '');
-        
+    
+    // Calculate the bounds of all nodes
+    let bounds = {
+        minX: Infinity,
+        maxX: -Infinity,
+        minY: Infinity,
+        maxY: -Infinity
+    };
+    
+    root.descendants().forEach(d => {
+        bounds.minX = Math.min(bounds.minX, d.x - 90);
+        bounds.maxX = Math.max(bounds.maxX, d.x + 90);
+        bounds.minY = Math.min(bounds.minY, d.y - 25);
+        bounds.maxY = Math.max(bounds.maxY, d.y + 25);
+    });
+    
+    // Add padding to bounds
+    bounds.minX -= padding;
+    bounds.maxX += padding;
+    bounds.minY -= padding;
+    bounds.maxY += padding;
+    
+    // Calculate the scale to fit the content
+    const scale = Math.min(
+        width / (bounds.maxX - bounds.minX),
+        height / (bounds.maxY - bounds.minY),
+        1.5
+    );
+    
+    // Calculate translation to center the content
+    const tx = (width - (bounds.maxX + bounds.minX) * scale) / 2;
+    const ty = 70;
+    
+    // Apply the initial transform
+    g.attr('transform', `translate(${tx},${ty}) scale(${scale})`);
+    
+    // Store the initial transform
+    svg.property('__initial_transform', { x: tx, y: ty, k: scale });
+    
     // Add "Go Up" button if not at root
     if (selectedEmployee && selectedEmployee !== ceoData) {
         const buttonGroup = svg.append('g')
@@ -259,43 +322,9 @@ function renderOrgChart(data) {
             .attr('class', 'go-up-text')
             .text('Up');
     }
-
-    // Calculate bounds of all nodes
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    root.descendants().forEach(d => {
-        minX = Math.min(minX, d.x - nodeWidth/2);
-        maxX = Math.max(maxX, d.x + nodeWidth/2);
-        minY = Math.min(minY, d.y);
-        maxY = Math.max(maxY, d.y + nodeHeight);
-    });
-
-    // Add padding
-    const padding = 40;
-    minX -= padding;
-    maxX += padding;
-    minY -= padding;
-    maxY += padding;
-
-    // Calculate scale to fit all nodes
-    const scale = Math.min(
-        width / (maxX - minX),
-        height / (maxY - minY),
-        1.2 // Lower maximum zoom level for better appearance
-    );
-
-    // Ensure minimum scale doesn't go below 0.6
-    const finalScale = Math.max(scale, 0.6);
-
-    // Center the view
-    const tx = (width - (maxX - minX) * finalScale) / 2 - minX * finalScale;
-    const ty = (height - (maxY - minY) * finalScale) / 2 - minY * finalScale;
-
-    // Apply the transform
-    const transform = d3.zoomIdentity
-        .translate(tx, ty)
-        .scale(finalScale);
     
-    svg.call(zoom.transform, transform);
+    // Reset zoom transform to the calculated initial position
+    zoom.transform(svg, d3.zoomIdentity.translate(tx, ty).scale(scale));
 }
 
 function findEmployee(name, node) {
@@ -511,8 +540,19 @@ function updateTeamMembersList(employee) {
     if (!container) return;
     
     container.innerHTML = teamMembers.map(member => `
-        <div class="team-member" onclick="findAndSelectEmployee('${member.name}')">${member.name}</div>
+        <div class="team-member" data-employee-name="${member.name}">${member.name}</div>
     `).join('');
+
+    // Add click event listeners to all team members
+    container.querySelectorAll('.team-member').forEach(element => {
+        element.addEventListener('click', () => {
+            const name = element.dataset.employeeName;
+            const employee = findEmployee(name, ceoData);
+            if (employee) {
+                selectEmployee(employee);
+            }
+        });
+    });
 }
 
 function findAndSelectEmployee(name) {
@@ -554,3 +594,9 @@ function updateCompanyStats(data) {
     document.getElementById('total-teams').textContent = teams.size;
     document.getElementById('total-locations').textContent = locations.size;
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializeApp().catch(error => {
+        console.error('Failed to initialize app:', error);
+    });
+});

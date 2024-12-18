@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Organization Explorer</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://sql.js.org/dist/sql-wasm.js"></script>
     <link rel="stylesheet" href="styles.css">
     <!-- Modern Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -12,16 +13,24 @@
 <body>
     <div class="app-container">
         <div class="container">
-            <div id="top-section">
-                <div id="search-container">
-                    <input type="text" id="search-input" placeholder="Search employees..." class="search-input">
-                    <div id="search-dropdown" class="search-dropdown"></div>
+            <div class="left-panel">
+                <div class="search-section">
+                    <div id="search-container">
+                        <input type="text" id="search-input" class="search-input" placeholder="Search employees...">
+                        <div id="search-dropdown" class="search-dropdown"></div>
+                    </div>
+                    <div id="breadcrumb" class="breadcrumb"></div>
+                    <div id="search-results" class="search-results">
+                        No results to show
+                        <!-- Search results will be inserted here -->
+                    </div>
                 </div>
-                <div id="breadcrumb" class="breadcrumb"></div>
+                <div class="chart-section">
+                    <div id="org-chart" class="org-chart"></div>
+                </div>
             </div>
-            <div class="main-content">
-                <div id="org-chart" class="org-chart"></div>
-                <div class="side-panel">
+            <div class="side-panel">
+                <div class="side-panel-content">
                     <div id="info-panel" class="info-panel">
                         <!-- Info panel content will be inserted here -->
                     </div>
@@ -31,32 +40,32 @@
                             <!-- Team members will be inserted here -->
                         </div>
                     </div>
-                    <div id="stats-container">
-                        <div id="employee-stats" class="stats-row">
-                            <!-- Employee specific stats will be inserted here -->
+                </div>
+                <div id="stats-container">
+                    <div id="employee-stats" class="stats-row">
+                        <!-- Employee specific stats will be inserted here -->
+                    </div>
+                    <div class="company-stats-divider">
+                        <span>Company Total</span>
+                    </div>
+                    <div id="company-stats" class="stats-row">
+                        <div class="stat-item">
+                            <div class="stat-value" id="total-employees">0</div>
+                            <div class="stat-label">Employees</div>
                         </div>
-                        <div class="company-stats-divider">
-                            <span>Company Total</span>
+                        <div class="stat-item">
+                            <div class="stat-value" id="total-teams">0</div>
+                            <div class="stat-label">Teams</div>
                         </div>
-                        <div id="company-stats" class="stats-row">
-                            <div class="stat-item">
-                                <div class="stat-value" id="total-employees">0</div>
-                                <div class="stat-label">Employees</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-value" id="total-teams">0</div>
-                                <div class="stat-label">Teams</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-value" id="total-locations">0</div>
-                                <div class="stat-label">Locations</div>
-                            </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="total-locations">0</div>
+                            <div class="stat-label">Locations</div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
