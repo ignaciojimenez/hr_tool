@@ -1,8 +1,10 @@
 // Using sql.js for SQLite in browser
 let SQL;
 let db;
+let nextEmployeeId = 1;
 
 async function initDatabase() {
+    console.log('Initializing database...');
     try {
         // Initialize sql.js
         SQL = await initSqlJs({
@@ -10,7 +12,9 @@ async function initDatabase() {
         });
         db = new SQL.Database();
         
-        // Create employees table
+        console.log('Database initialized.');
+        
+        // Create employees table with additional fields
         db.run(`
             CREATE TABLE IF NOT EXISTS employees (
                 id INTEGER PRIMARY KEY,
@@ -19,13 +23,22 @@ async function initDatabase() {
                 country TEXT,
                 role TEXT,
                 manager_id INTEGER,
+                start_date TEXT,
                 data JSON,
                 search_text TEXT
             );
         `);
 
-        // Create index for search
+        console.log('Employees table created.');
+        
+        // Create indices for common search fields
         db.run(`CREATE INDEX IF NOT EXISTS idx_search_text ON employees(search_text);`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_name ON employees(name);`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_team ON employees(team);`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_country ON employees(country);`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_start_date ON employees(start_date);`);
+        
+        console.log('Indices created.');
         
         return true;
     } catch (error) {
@@ -34,45 +47,51 @@ async function initDatabase() {
     }
 }
 
+function assignUniqueIds(employee) {
+    employee.id = nextEmployeeId++;
+    if (employee.direct_reports) {
+        employee.direct_reports.forEach(child => assignUniqueIds(child));
+    }
+    return employee;
+}
+
 function populateDatabase(employeeData) {
     try {
+        // First clear any existing data
+        db.run('DELETE FROM employees');
+        
         function insertEmployee(employee, managerId = null) {
             const stmt = db.prepare(`
-                INSERT INTO employees (name, team, country, role, manager_id, data, search_text)
-                VALUES (?, ?, ?, ?, ?, ?, ?);
+                INSERT INTO employees (id, name, team, country, role, manager_id, start_date, data, search_text)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
             `);
             
+            const country = employee.location || employee.country || 'Unknown';
             const employeeJson = JSON.stringify(employee);
-            const searchText = `${employee.name} ${employee.team} ${employee.country} ${employee.role || ''}`.toLowerCase();
+            const searchText = `${employee.name} ${employee.team} ${country} ${employee.role || ''}`.toLowerCase();
             
             stmt.run([
+                employee.id,
                 employee.name,
                 employee.team,
-                employee.country,
-                employee.role || '',
+                country,
+                employee.role || null,
                 managerId,
+                employee.start_date || '2023-01-01',
                 employeeJson,
                 searchText
             ]);
-            stmt.free();
-
-            const employeeId = db.exec('SELECT last_insert_rowid();')[0].values[0][0];
-
+            
             if (employee.direct_reports) {
                 employee.direct_reports.forEach(report => {
-                    insertEmployee(report, employeeId);
+                    insertEmployee(report, employee.id);
                 });
             }
         }
-
-        // Clear existing data
-        db.run('DELETE FROM employees;');
-        insertEmployee(employeeData);
         
-        // Debug: Check total number of employees
-        const count = db.exec('SELECT COUNT(*) FROM employees;')[0].values[0][0];
-        console.log('Total employees in database:', count);
-        
+        nextEmployeeId = 1; // Reset ID counter
+        const employeeDataWithIds = assignUniqueIds(employeeData);
+        insertEmployee(employeeDataWithIds);
         return true;
     } catch (error) {
         console.error('Database population error:', error);
@@ -80,41 +99,128 @@ function populateDatabase(employeeData) {
     }
 }
 
-function searchEmployeesDb(query) {
-    const results = [];
-    let stmt = null;
+// Parse the query string into SQL
+function parseQuery(queryStr) {
+    const query = queryStr.trim().toLowerCase();
     
     try {
-        const searchPattern = `%${query.toLowerCase()}%`;
-        console.log('Searching with pattern:', searchPattern);
+        const conditions = [];
+        const params = [];
         
-        // First, let's see what's in the database
-        const allEmployees = db.exec('SELECT name, search_text FROM employees LIMIT 5;');
-        console.log('Sample employees in DB:', allEmployees);
+        const parts = query.split(/\s+(and|or)\s+/i);
         
-        stmt = db.prepare(`
-            SELECT data
-            FROM employees
-            WHERE search_text LIKE ?
-            LIMIT 5;
-        `);
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i].trim();
+            
+            if (part.toLowerCase() === 'and' || part.toLowerCase() === 'or') {
+                conditions.push(part.toUpperCase());
+                continue;
+            }
+            
+            const matches = part.match(/^(\w+)(=|!=|>|<|>=|<=|like|contains)(.+)$/i);
+            if (!matches) continue;
+            
+            let [_, field, operator, value] = matches;
+            value = value.trim().replace(/^['"]|['"]$/g, '');
+            
+            if (field === 'location') {
+                field = 'country';
+            }
+            
+            switch (operator.toLowerCase()) {
+                case '=':
+                    conditions.push(`${field} = ?`);
+                    params.push(value);
+                    break;
+                case '!=':
+                    conditions.push(`${field} != ?`);
+                    params.push(value);
+                    break;
+                case '>':
+                    conditions.push(`${field} > ?`);
+                    params.push(value);
+                    break;
+                case '<':
+                    conditions.push(`${field} < ?`);
+                    params.push(value);
+                    break;
+                case '>=':
+                    conditions.push(`${field} >= ?`);
+                    params.push(value);
+                    break;
+                case '<=':
+                    conditions.push(`${field} <= ?`);
+                    params.push(value);
+                    break;
+                case 'like':
+                case 'contains':
+                    conditions.push(`${field} LIKE ?`);
+                    params.push(`%${value}%`);
+                    break;
+            }
+        }
         
-        stmt.bind([searchPattern]);
+        if (conditions.length === 0) {
+            return {
+                where: 'search_text LIKE ?',
+                params: [`%${query}%`]
+            };
+        }
+
+        return {
+            where: conditions.join(' '),
+            params
+        };
         
+    } catch (error) {
+        console.error('Query parsing error:', error);
+        return {
+            where: 'search_text LIKE ?',
+            params: [`%${query}%`]
+        };
+    }
+}
+
+async function searchEmployeesDb(queryStr) {
+    try {
+        const { where, params } = parseQuery(queryStr);
+        
+        const query = `
+            SELECT e.*, 
+                   (SELECT name FROM employees WHERE id = e.manager_id) as manager_name
+            FROM employees e
+            WHERE ${where}
+            ORDER BY e.name
+            LIMIT 100;
+        `;
+        
+        const stmt = db.prepare(query);
+        if (params.length > 0) {
+            stmt.bind(params);
+        }
+        
+        let results = [];
         while (stmt.step()) {
             const row = stmt.getAsObject();
-            results.push(JSON.parse(row.data));
+            results.push({
+                id: row.id,
+                name: row.name,
+                team: row.team,
+                country: row.country,
+                role: row.role,
+                manager: row.manager_name,
+                start_date: row.start_date,
+                data: row.data ? JSON.parse(row.data) : {}
+            });
         }
         
-        console.log('Search results:', results);
+        stmt.free();
+        return results;
+        
     } catch (error) {
         console.error('Search error:', error);
-    } finally {
-        if (stmt) {
-            stmt.free();
-        }
+        return [];
     }
-    return results;
 }
 
 export { initDatabase, populateDatabase, searchEmployeesDb };

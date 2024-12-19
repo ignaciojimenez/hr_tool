@@ -42,76 +42,97 @@ async function loadData() {
 }
 
 function setupSearch() {
-    const searchInput = document.querySelector('#search-input');
-    const searchDropdown = document.querySelector('#search-dropdown');
-    let debounceTimer;
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('#search-container')) {
-            searchDropdown.classList.remove('active');
-        }
+    console.log('Setting up search...');
+    const searchInput = document.getElementById('search-input');
+    const searchResults = document.getElementById('search-results');
+    
+    console.log('Search elements found:', {
+        input: searchInput,
+        results: searchResults
     });
-
-    searchInput.addEventListener('input', () => {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-            const query = searchInput.value.trim();
-            if (query.length >= 2) {
-                const results = searchEmployees(query);
-                displaySearchResults(results);
-            } else {
-                searchDropdown.classList.remove('active');
-            }
-        }, 300);
-    });
-}
-
-function searchEmployees(query) {
-    return searchEmployeesDb(query);
-}
-
-function displaySearchResults(results) {
-    const searchDropdown = document.querySelector('#search-dropdown');
-    searchDropdown.innerHTML = '';
-
-    if (results.length === 0) {
-        const noResults = document.createElement('div');
-        noResults.className = 'search-result';
-        noResults.textContent = 'No results found';
-        searchDropdown.appendChild(noResults);
+    
+    if (!searchInput || !searchResults) {
+        console.error('Search elements not found');
         return;
     }
 
-    results.forEach(employee => {
-        const resultElement = document.createElement('div');
-        resultElement.className = 'search-result';
-        resultElement.innerHTML = `
-            <div class="search-result-name">${employee.name}</div>
-            <div class="search-result-details">
-                ${employee.team} · ${employee.title} · ${employee.country}
-            </div>
-        `;
-        resultElement.addEventListener('click', () => {
-            findAndSelectEmployee(employee.name);
-            searchDropdown.classList.remove('active');
-            document.querySelector('#search-input').value = '';
-        });
-        searchDropdown.appendChild(resultElement);
+    let debounceTimeout;
+
+    searchInput.addEventListener('input', async (e) => {
+        clearTimeout(debounceTimeout);
+        const query = e.target.value.trim();
+
+        if (!query) {
+            searchResults.innerHTML = '<div class="no-results"></div>';
+            return;
+        }
+
+        debounceTimeout = setTimeout(async () => {
+            const results = await searchEmployeesDb(query);
+            displaySearchResults(results);
+        }, 300);
     });
-    
-    searchDropdown.classList.add('active');
+
+    // Initialize with empty state
+    searchResults.innerHTML = '<div class="no-results"></div>';
 }
 
-function initializeSearch() {
-    // Flatten the organization structure to get all employees
-    function collectEmployees(node) {
-        allEmployees.push(node);
-        if (node.direct_reports) {
-            node.direct_reports.forEach(collectEmployees);
-        }
+function displaySearchResults(results) {
+    const container = document.getElementById('search-results');
+    if (!container) {
+        console.error('Search results container not found');
+        return;
     }
-    collectEmployees(ceoData);
+
+    if (!results || results.length === 0) {
+        container.innerHTML = '<div class="no-results">No results found</div>';
+        return;
+    }
+
+    const tableHtml = `
+        <table class="search-results-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Team</th>
+                    <th>Location</th>
+                    <th>Manager</th>
+                    <th>Start Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${results.map(employee => `
+                    <tr class="search-result-row">
+                        <td>
+                            <a href="#" class="employee-name-link" data-employee-id="${employee.id}">
+                                ${employee.name}
+                            </a>
+                        </td>
+                        <td>${employee.role || '-'}</td>
+                        <td>${employee.team || '-'}</td>
+                        <td>${employee.country || '-'}</td>
+                        <td>${employee.manager || '-'}</td>
+                        <td>${employee.start_date || '-'}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+
+    container.innerHTML = tableHtml;
+
+    // Add click handlers for employee names
+    container.querySelectorAll('.employee-name-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const id = parseInt(link.dataset.employeeId);
+            const employee = findEmployeeById(id, ceoData);
+            if (employee) {
+                selectEmployee(employee);
+            }
+        });
+    });
 }
 
 function selectEmployee(employeeData) {
@@ -222,7 +243,7 @@ function renderOrgChart(data) {
         .style('cursor', 'pointer')
         .on('click', function(event, d) {
             event.stopPropagation();
-            const employee = findEmployee(d.data.name, ceoData);
+            const employee = findEmployeeById(d.data.id, ceoData);
             if (employee && employee !== currentEmployee) {
                 selectEmployee(employee);
             }
@@ -294,10 +315,10 @@ function renderOrgChart(data) {
     if (selectedEmployee && selectedEmployee !== ceoData) {
         const buttonGroup = svg.append('g')
             .attr('class', 'go-up-button')
-            .attr('transform', `translate(${width - 60}, 20)`)
+            .attr('transform', `translate(${width - 60}, 160)`)
             .style('cursor', 'pointer')
             .on('click', () => {
-                const manager = findManager(selectedEmployee.name, ceoData);
+                const manager = findManager(selectedEmployee.id, ceoData);
                 if (manager) {
                     selectEmployee(manager);
                 }
@@ -327,24 +348,24 @@ function renderOrgChart(data) {
     zoom.transform(svg, d3.zoomIdentity.translate(tx, ty).scale(scale));
 }
 
-function findEmployee(name, node) {
+function findEmployeeById(id, node) {
     if (!node) return null;
-    if (node.name === name) return node;
+    if (node.id === id) return node;
     if (node.direct_reports) {
         for (const report of node.direct_reports) {
-            const found = findEmployee(name, report);
+            const found = findEmployeeById(id, report);
             if (found) return found;
         }
     }
     return null;
 }
 
-function findManager(employeeName, data, parent = null) {
+function findManager(employeeId, data, parent = null) {
     if (!data) return null;
-    if (data.name === employeeName) return parent;
+    if (data.id === employeeId) return parent;
     if (data.direct_reports) {
         for (const report of data.direct_reports) {
-            const found = findManager(employeeName, report, data);
+            const found = findManager(employeeId, report, data);
             if (found !== null) return found;
         }
     }
@@ -391,7 +412,7 @@ function updateInfoPanel(employee) {
         managerLink.className = 'clickable';
         managerLink.textContent = employee.manager;
         managerLink.addEventListener('click', () => {
-            const manager = findManager(employee.name, ceoData);
+            const manager = findManager(employee.id, ceoData);
             if (manager) selectEmployee(manager);
         });
         managerPara.appendChild(managerLabel);
@@ -455,7 +476,7 @@ function findPath(targetEmployee) {
         
         path.push(node);
         
-        if (node === target) return true;
+        if (node.id === target.id) return true;
         
         if (node.direct_reports) {
             for (const report of node.direct_reports) {
@@ -540,14 +561,14 @@ function updateTeamMembersList(employee) {
     if (!container) return;
     
     container.innerHTML = teamMembers.map(member => `
-        <div class="team-member" data-employee-name="${member.name}">${member.name}</div>
+        <div class="team-member" data-employee-id="${member.id}">${member.name}</div>
     `).join('');
 
     // Add click event listeners to all team members
     container.querySelectorAll('.team-member').forEach(element => {
         element.addEventListener('click', () => {
-            const name = element.dataset.employeeName;
-            const employee = findEmployee(name, ceoData);
+            const id = parseInt(element.dataset.employeeId);
+            const employee = findEmployeeById(id, ceoData);
             if (employee) {
                 selectEmployee(employee);
             }
@@ -555,8 +576,8 @@ function updateTeamMembersList(employee) {
     });
 }
 
-function findAndSelectEmployee(name) {
-    const employee = findEmployee(name, ceoData);
+function findAndSelectEmployee(id) {
+    const employee = findEmployeeById(id, ceoData);
     if (employee) {
         selectEmployee(employee);
     }
@@ -596,6 +617,8 @@ function updateCompanyStats(data) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing search...');
+    setupSearch();
     initializeApp().catch(error => {
         console.error('Failed to initialize app:', error);
     });
