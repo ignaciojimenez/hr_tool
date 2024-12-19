@@ -51,6 +51,14 @@ body {
 
 #search-container {
     width: 100%;
+    margin-bottom: 8px;
+}
+
+.search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .search-input {
@@ -59,7 +67,77 @@ body {
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 14px;
-    margin-bottom: 0.5rem;
+}
+
+.search-info-icon {
+    position: relative;
+    cursor: help;
+    color: #666;
+    display: flex;
+    align-items: center;
+    padding: 4px;
+}
+
+.search-info-icon:hover {
+    color: #333;
+}
+
+.search-info-tooltip {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 300px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    margin-top: 8px;
+}
+
+.search-info-icon:hover .search-info-tooltip {
+    display: block;
+}
+
+.tooltip-content {
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.tooltip-content h4 {
+    margin: 0 0 8px 0;
+    color: #333;
+    font-size: 14px;
+}
+
+.tooltip-content p {
+    margin: 8px 0;
+    color: #666;
+}
+
+.tooltip-content ul {
+    margin: 4px 0;
+    padding-left: 20px;
+    color: #666;
+}
+
+.tooltip-content li {
+    margin: 4px 0;
+}
+
+.search-info-tooltip::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: 10px;
+    width: 10px;
+    height: 10px;
+    background: white;
+    border-left: 1px solid #ddd;
+    border-top: 1px solid #ddd;
+    transform: rotate(45deg);
 }
 
 .search-section {
@@ -71,44 +149,10 @@ body {
     height: 300px;
 }
 
-
 .search-results {
     flex: 1;
-    background: white;
     overflow: auto;
-}
-
-.search-result-item {
-    padding: 0.75rem;
-    border-bottom: 1px solid #e0e0e0;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.search-result-item:last-child {
-    border-bottom: none;
-}
-
-.search-result-item:hover {
-    background-color: #f5f5f5;
-}
-
-.search-result-name {
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 0.25rem;
-}
-
-.search-result-details {
-    font-size: 0.875rem;
-    color: #666;
-    line-height: 1.4;
-}
-
-.no-results {
-    padding: 0.5rem;
-    color: #666;
-    font-style: italic;
+    margin-top: 8px;
 }
 
 .search-results-table {
@@ -225,8 +269,6 @@ body {
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-
-
 
 .chart-section {
     flex: 1;

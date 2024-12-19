@@ -16,13 +16,37 @@
             <div class="left-panel">
                 <div class="search-section">
                     <div id="search-container">
-                        <input type="text" id="search-input" class="search-input" 
-                               placeholder='Try queries like: name="Andrew" or location="UK" and team="Engineering"'>
+                        <div class="search-input-wrapper">
+                            <input type="text" id="search-input" class="search-input" placeholder="Search employees...">
+                            <div class="search-info-icon" title="Search Help">
+                                <svg width="16" height="16" viewBox="0 0 16 16">
+                                    <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                                    <text x="8" y="12" text-anchor="middle" font-size="10" fill="currentColor">i</text>
+                                </svg>
+                                <div class="search-info-tooltip">
+                                    <div class="tooltip-content">
+                                        <h4>Search Syntax</h4>
+                                        <p>Simple search: just type any text</p>
+                                        <p>Field search:</p>
+                                        <ul>
+                                            <li>name=John</li>
+                                            <li>team=Engineering</li>
+                                            <li>location=UK</li>
+                                            <li>role="Software Engineer"</li>
+                                        </ul>
+                                        <p>Operators: =, !=, >, <, >=, <=, contains, like</p>
+                                        <p>Combine with AND/OR:</p>
+                                        <ul>
+                                            <li>team=Engineering and location=UK</li>
+                                            <li>role contains Manager or role contains Lead</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div id="breadcrumb" class="breadcrumb"></div>
-                    <div id="search-results" class="search-results">
-                        <!-- Search results will be inserted here -->
-                    </div>
+                    <div id="search-results" class="search-results"></div>
                 </div>
                 <div class="chart-section">
                     <div id="org-chart" class="org-chart"></div>
