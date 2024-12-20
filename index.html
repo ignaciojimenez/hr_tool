@@ -25,17 +25,32 @@
                                 </svg>
                                 <div class="search-info-tooltip">
                                     <div class="tooltip-content">
-                                        <h4>Search Syntax</h4>
-                                        <p>Simple search: just type any text</p>
-                                        <p>Field search:</p>
+                                        <h4>Search Guide</h4>
+                                        <p><strong>Simple Search:</strong><br>
+                                        Just type any text to search across all fields</p>
+                                        
+                                        <p><strong>Available Fields:</strong></p>
                                         <ul>
-                                            <li>name=John</li>
-                                            <li>team=Engineering</li>
-                                            <li>location=UK</li>
-                                            <li>role="Software Engineer"</li>
+                                            <li>name - Employee's full name</li>
+                                            <li>team - Team or department</li>
+                                            <li>location - Office location/country</li>
+                                            <li>role - Job title/position</li>
+                                            <li>start_date - Employment start date</li>
                                         </ul>
-                                        <p>Operators: =, !=, >, <, >=, <=, contains, like</p>
-                                        <p>Combine with AND/OR:</p>
+
+                                        <p><strong>Search Operators:</strong></p>
+                                        <ul>
+                                            <li><code>=</code> Exact match (case-insensitive)<br>
+                                                <em>Example: name=John Smith</em></li>
+                                            <li><code>contains</code> or <code>like</code> Partial match<br>
+                                                <em>Example: role contains Engineer</em></li>
+                                            <li><code>!=</code> Not equal to<br>
+                                                <em>Example: location!=UK</em></li>
+                                            <li><code>>, <, >=, <=</code> Date comparisons<br>
+                                                <em>Example: start_date>2023-01-01</em></li>
+                                        </ul>
+
+                                        <p><strong>Combine with AND/OR:</strong></p>
                                         <ul>
                                             <li>team=Engineering and location=UK</li>
                                             <li>role contains Manager or role contains Lead</li>

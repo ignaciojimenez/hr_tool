@@ -102,12 +102,24 @@ function populateDatabase(employeeData) {
 // Parse the query string into SQL
 function parseQuery(queryStr) {
     const query = queryStr.trim().toLowerCase();
+    console.log('Parsing query:', query);
     
     try {
+        // If it's a simple search without operators, use the search_text field
+        if (!query.includes('=') && !query.includes('>') && !query.includes('<') && 
+            !query.includes('contains') && !query.includes('like')) {
+            return {
+                where: 'search_text LIKE ?',
+                params: [`%${query}%`]
+            };
+        }
+
         const conditions = [];
         const params = [];
         
+        // Split on AND/OR, preserving the operators
         const parts = query.split(/\s+(and|or)\s+/i);
+        console.log('Query parts:', parts);
         
         for (let i = 0; i < parts.length; i++) {
             const part = parts[i].trim();
@@ -117,44 +129,78 @@ function parseQuery(queryStr) {
                 continue;
             }
             
-            const matches = part.match(/^(\w+)(=|!=|>|<|>=|<=|like|contains)(.+)$/i);
-            if (!matches) continue;
+            // Match field operators more reliably
+            let field, operator, value;
             
-            let [_, field, operator, value] = matches;
-            value = value.trim().replace(/^['"]|['"]$/g, '');
-            
-            if (field === 'location') {
-                field = 'country';
+            if (part.includes('contains') || part.includes('like')) {
+                const matches = part.split(/\s+(contains|like)\s+/i);
+                if (matches.length >= 2) {
+                    field = matches[0];
+                    operator = matches[1];
+                    value = matches.slice(2).join(' ');
+                } else {
+                    continue;
+                }
+            } else {
+                // Handle =, !=, >, <, >=, <= operators
+                const operatorMatch = part.match(/(.*?)(=|!=|>=|<=|>|<)(.*)/);
+                if (operatorMatch) {
+                    // Skip the full match at index 0
+                    field = operatorMatch[1];
+                    operator = operatorMatch[2];
+                    value = operatorMatch[3];
+                } else {
+                    continue;
+                }
             }
             
-            switch (operator.toLowerCase()) {
+            field = field.trim();
+            operator = operator.trim().toLowerCase();
+            value = value.trim().replace(/^['"]|['"]$/g, '');
+            
+            // Map field names to database columns
+            const fieldMap = {
+                'location': 'country',
+                'name': 'name',
+                'team': 'team',
+                'role': 'role',
+                'start_date': 'start_date'
+            };
+
+            const dbField = fieldMap[field];
+            if (!dbField) {
+                console.warn(`Unknown field: ${field}`);
+                continue;
+            }
+            
+            switch (operator) {
                 case '=':
-                    conditions.push(`${field} = ?`);
+                    conditions.push(`LOWER(${dbField}) = LOWER(?)`);
                     params.push(value);
                     break;
                 case '!=':
-                    conditions.push(`${field} != ?`);
+                    conditions.push(`LOWER(${dbField}) != LOWER(?)`);
                     params.push(value);
                     break;
                 case '>':
-                    conditions.push(`${field} > ?`);
+                    conditions.push(`${dbField} > ?`);
                     params.push(value);
                     break;
                 case '<':
-                    conditions.push(`${field} < ?`);
+                    conditions.push(`${dbField} < ?`);
                     params.push(value);
                     break;
                 case '>=':
-                    conditions.push(`${field} >= ?`);
+                    conditions.push(`${dbField} >= ?`);
                     params.push(value);
                     break;
                 case '<=':
-                    conditions.push(`${field} <= ?`);
+                    conditions.push(`${dbField} <= ?`);
                     params.push(value);
                     break;
-                case 'like':
                 case 'contains':
-                    conditions.push(`${field} LIKE ?`);
+                case 'like':
+                    conditions.push(`${dbField} LIKE ?`);
                     params.push(`%${value}%`);
                     break;
             }
@@ -167,13 +213,17 @@ function parseQuery(queryStr) {
             };
         }
 
-        return {
+        const result = {
             where: conditions.join(' '),
             params
         };
+        console.log('Generated SQL where clause:', result.where);
+        console.log('SQL parameters:', result.params);
+        return result;
         
     } catch (error) {
         console.error('Query parsing error:', error);
+        // Fallback to simple search
         return {
             where: 'search_text LIKE ?',
             params: [`%${query}%`]
@@ -193,6 +243,9 @@ async function searchEmployeesDb(queryStr) {
             ORDER BY e.name
             LIMIT 100;
         `;
+        
+        console.log('Executing SQL query:', query);
+        console.log('With parameters:', params);
         
         const stmt = db.prepare(query);
         if (params.length > 0) {
@@ -214,6 +267,7 @@ async function searchEmployeesDb(queryStr) {
             });
         }
         
+        console.log('Search results:', results.length);
         stmt.free();
         return results;
         
