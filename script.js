@@ -42,97 +42,123 @@ async function loadData() {
 }
 
 function setupSearch() {
-    console.log('Setting up search...');
     const searchInput = document.getElementById('search-input');
     const searchResults = document.getElementById('search-results');
-    
-    console.log('Search elements found:', {
-        input: searchInput,
-        results: searchResults
-    });
-    
-    if (!searchInput || !searchResults) {
-        console.error('Search elements not found');
-        return;
+    const searchGuidance = document.getElementById('search-guidance');
+
+    // Show guidance initially
+    if (searchGuidance) {
+        searchGuidance.style.display = 'block';
     }
 
-    let debounceTimeout;
+    let searchTimeout = null;
 
-    searchInput.addEventListener('input', async (e) => {
-        clearTimeout(debounceTimeout);
+    searchInput.addEventListener('input', (e) => {
         const query = e.target.value.trim();
+        
+        // Clear any pending search
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
 
+        // If empty query, show guidance and clear results
         if (!query) {
-            searchResults.innerHTML = '<div class="no-results"></div>';
+            searchResults.innerHTML = '';
+            if (searchGuidance) {
+                searchGuidance.style.display = 'block';
+            }
             return;
         }
 
-        debounceTimeout = setTimeout(async () => {
-            const results = await searchEmployeesDb(query);
-            displaySearchResults(results);
+        // Hide guidance during active search
+        if (searchGuidance) {
+            searchGuidance.style.display = 'none';
+        }
+
+        // Set a timeout for the search
+        searchTimeout = setTimeout(() => {
+            handleSearch(query, searchResults, searchGuidance);
         }, 300);
     });
 
-    // Initialize with empty state
-    searchResults.innerHTML = '<div class="no-results"></div>';
+    // When search input loses focus and is empty, show guidance
+    searchInput.addEventListener('blur', () => {
+        if (!searchInput.value.trim()) {
+            searchResults.innerHTML = '';
+            if (searchGuidance) {
+                searchGuidance.style.display = 'block';
+            }
+        }
+    });
 }
 
-function displaySearchResults(results) {
-    const container = document.getElementById('search-results');
-    if (!container) {
-        console.error('Search results container not found');
-        return;
+async function handleSearch(query, searchResults, searchGuidance) {
+    try {
+        const results = await searchEmployeesDb(query);
+        
+        // Always hide guidance during active search
+        if (searchGuidance) {
+            searchGuidance.style.display = 'none';
+        }
+
+        if (results.length === 0) {
+            // Show empty state with table structure
+            searchResults.innerHTML = `
+                <table class="search-results-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Team</th>
+                            <th>Location</th>
+                            <th>Manager</th>
+                            <th>Start Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="6" class="no-results">No results found for "${query}"</td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+        } else {
+            const resultsHtml = `
+                <table class="search-results-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Team</th>
+                            <th>Location</th>
+                            <th>Manager</th>
+                            <th>Start Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${results.map(employee => `
+                            <tr class="search-result-row">
+                                <td>
+                                    <a href="#" class="employee-name-link" onclick="window.handleEmployeeClick(${employee.id}); return false;">
+                                        ${employee.name || '-'}
+                                    </a>
+                                </td>
+                                <td>${employee.role || '-'}</td>
+                                <td>${employee.team || '-'}</td>
+                                <td>${employee.country || '-'}</td>
+                                <td>${employee.manager || '-'}</td>
+                                <td>${employee.start_date || '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            searchResults.innerHTML = resultsHtml;
+        }
+    } catch (error) {
+        console.error('Search error:', error);
+        searchResults.innerHTML = '<div class="error">Error performing search</div>';
     }
-
-    if (!results || results.length === 0) {
-        container.innerHTML = '<div class="no-results">No results found</div>';
-        return;
-    }
-
-    const tableHtml = `
-        <table class="search-results-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Role</th>
-                    <th>Team</th>
-                    <th>Location</th>
-                    <th>Manager</th>
-                    <th>Start Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${results.map(employee => `
-                    <tr class="search-result-row">
-                        <td>
-                            <a href="#" class="employee-name-link" data-employee-id="${employee.id}">
-                                ${employee.name}
-                            </a>
-                        </td>
-                        <td>${employee.role || '-'}</td>
-                        <td>${employee.team || '-'}</td>
-                        <td>${employee.country || '-'}</td>
-                        <td>${employee.manager || '-'}</td>
-                        <td>${employee.start_date || '-'}</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-    `;
-
-    container.innerHTML = tableHtml;
-
-    // Add click handlers for employee names
-    container.querySelectorAll('.employee-name-link').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const id = parseInt(link.dataset.employeeId);
-            const employee = findEmployeeById(id, ceoData);
-            if (employee) {
-                selectEmployee(employee);
-            }
-        });
-    });
 }
 
 function selectEmployee(employeeData) {
@@ -348,15 +374,22 @@ function renderOrgChart(data) {
     zoom.transform(svg, d3.zoomIdentity.translate(tx, ty).scale(scale));
 }
 
-function findEmployeeById(id, node) {
-    if (!node) return null;
-    if (node.id === id) return node;
-    if (node.direct_reports) {
-        for (const report of node.direct_reports) {
+function findEmployeeById(id, data = ceoData) {
+    if (!data) return null;
+    
+    // Convert both IDs to numbers for comparison
+    if (parseInt(data.id) === parseInt(id)) {
+        return data;
+    }
+    
+    // Search in direct reports
+    if (data.direct_reports) {
+        for (const report of data.direct_reports) {
             const found = findEmployeeById(id, report);
             if (found) return found;
         }
     }
+    
     return null;
 }
 
@@ -615,6 +648,40 @@ function updateCompanyStats(data) {
     document.getElementById('total-teams').textContent = teams.size;
     document.getElementById('total-locations').textContent = locations.size;
 }
+
+// Make handleEmployeeClick globally accessible
+window.handleEmployeeClick = function(employeeId) {
+    console.log('Handling employee click:', employeeId);
+    
+    // Convert to number if it's a string
+    employeeId = parseInt(employeeId);
+    
+    // Find the employee in the org chart data
+    const employee = findEmployeeById(employeeId, ceoData);
+    console.log('Found employee:', employee);
+    
+    if (employee) {
+        // Select the employee in the visualization
+        selectEmployee(employee);
+        
+        // Clear search and restore initial state
+        const searchInput = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+        const searchGuidance = document.getElementById('search-guidance');
+        
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        if (searchResults) {
+            searchResults.innerHTML = '';
+        }
+        if (searchGuidance) {
+            searchGuidance.style.display = 'block';
+        }
+    } else {
+        console.error('Employee not found:', employeeId);
+    }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initializing search...');
